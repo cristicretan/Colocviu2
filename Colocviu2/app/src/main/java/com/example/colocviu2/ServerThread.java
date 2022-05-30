@@ -47,56 +47,41 @@ public class ServerThread extends Thread{
         while (!Thread.currentThread().isInterrupted()) {
             try {
                 Socket client_socket = serverSocket.accept();
-
-                /* TODO, Try to run the following code on a separate thread */
-
-                /* Two options, either create a new thread and run the following code or not */
-                /* CLIENT: Bucharest */
                 String clientResponse = "";
 
                 if (client_socket != null) {
                     BufferedReader bufferReader = Utils.getReader(client_socket);
                     String request_data = bufferReader.readLine();
 
-                    /* Request to server */
-
                     if (data.containsKey(request_data)) {
-                        clientResponse = data.get(request_data).getRes1() + ";" + data.get(request_data).getRes2();
-
+                        clientResponse = data.get(request_data).getDefinitionStr();
                     } else {
-                        /* Fie e prin HTTP, fie o sa fie prin sockets */
-                        // TODO: prepare socket connect
-
-                        // TODO: prepare a post skeleton
                         HttpClient httpClient = new DefaultHttpClient();
-                        HttpGet httpGet = new HttpGet("https://api.openweathermap.org/data/2.5/weather?" + "q=" + request_data + "&" + "appid=e03c3b32cfb5a6f7069f2ef29237d87e");
+                        HttpGet httpGet = new HttpGet("https://api.dictionaryapi.dev/api/v2/entries/en/" + request_data);
                         HttpResponse httpResponse = httpClient.execute(httpGet);
                         HttpEntity httpEntity = httpResponse.getEntity();
                         if (httpEntity == null) {
                             Log.e("Eroare", "Null response from server");
                         }
 
-
-                        /* PArse response and add to hashmap */
                         String response = EntityUtils.toString(httpEntity);
-                        /* {"coord":{"lon":26.1063,"lat":44.4323},"weather":[{"id":800,"main":"Clear","description":"clear sky","icon":"01d"}],"base":"stations","main":{"temp":293.07,"feels_like":292.08,"temp_min":292.05,"temp_max":293.63,"pressure":1023,"humidity":37},"visibility":10000,"wind":{"speed":4.02,"deg":260},"clouds":{"all":0},"dt":1652954151,"sys":{"type":2,"id":2032494,"country":"RO","sunrise":1652928268,"sunset":1652981992},"timezone":10800,"id":683506,"name":"Bucharest","cod":200} */
-                        JSONObject content = new JSONObject(response);
 
-                        JSONObject mainObject = content.getJSONObject("main");
 
-                        Double temperatura = mainObject.getDouble("temp");
-                        Integer humidity = mainObject.getInt("humidity");
-
+                        JSONArray content = new JSONArray(response);
+                        JSONObject contentObj = content.getJSONObject(0);
+                        JSONArray meaningsArr = contentObj.getJSONArray("meanings");
+                        JSONObject meaningsObject = meaningsArr.getJSONObject(0);
+                        JSONArray defArray = meaningsObject.getJSONArray("definitions");
+                        JSONObject definitionsObject = defArray.getJSONObject(0);
+                        String definition = definitionsObject.get("definition").toString();
 
                         GenericResults newRes = new GenericResults();
-                        newRes.setRes1(temperatura.toString());
-                        newRes.setRes2(humidity.toString());
+                        newRes.setDefinitionStr(definition);
                         this.data.put(request_data, newRes);
-                        clientResponse = data.get(request_data).getRes1() + ";" + data.get(request_data).getRes2();
+                        clientResponse = data.get(request_data).getDefinitionStr();
 
                     }
 
-                    /* Write to client socket the reponse */
                     PrintWriter printWriter = Utils.getWriter(client_socket);
                     printWriter.println(clientResponse);
 
